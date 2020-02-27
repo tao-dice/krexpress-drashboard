@@ -1,8 +1,0 @@
-{
-  "git": {
-    "tagName": "staging-v${version}"
-  },
-  "npm": {
-    "publish": false
-  }
-}

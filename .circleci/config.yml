@@ -1,0 +1,64 @@
+#####################
+###### Context ######
+#####################
+
+context_global: &context_global
+  context: kr-express-global
+
+context_prod: &context_prod
+  context: kr-exress-prod
+
+######################
+####### Filter #######
+######################
+
+filter_only_release_tag: &filter_only_release_tag
+  filters:
+    branches:
+      ignore: /.*/
+    tags:
+      only: /^release-v[\d]+.[\d]+.[\d]+/
+
+#######################
+###### Functions ######
+#######################
+login_docker: &login_docker
+  name: login docker hub
+  command: |
+    docker login -u ${DOCKER_HUB_USER} -p ${DOCKER_HUB_PASSWORD}
+
+release_image: &release_image
+  name: release_image
+  command: |
+    docker build -t krexpress/krexpress-dashboard:${CIRCLE_WORKFLOW_ID} .
+    docker push krexpress/krexpress-dashboard:${CIRCLE_WORKFLOW_ID}
+    docker tag krexpress/krexpress-dashboard:${CIRCLE_WORKFLOW_ID} krexpress/krexpress-dashboard:latest
+    docker push krexpress/krexpress-dashboard:latest
+
+version: 2.1
+jobs:
+  build:
+    machine: true
+    steps:
+      - checkout
+      - run: *login_docker
+      - run: *release_image
+
+  deploy:
+    machine: true
+    steps:
+      - checkout
+      - run: "ssh ${SSH_USER}@${APPLICATION_1} \"make dashboard\" "
+
+workflows:
+  version: 2
+  publish_prod:
+    jobs:
+      - build:
+          <<: *context_global
+          <<: *filter_only_release_tag
+      - deploy:
+          <<: *context_prod
+          <<: *filter_only_release_tag
+          requires:
+            - build
